@@ -1,0 +1,660 @@
+{
+    "openapi" : "3.0.1",
+    "info" : {
+      "title" : "",
+      "description" : "",
+      "termsOfService" : "",
+      "version" : ""
+    },
+    "servers" : [ {
+      "url" : "http://localhost:8080"
+    } ],
+    "security" : [ ],
+    "paths" : {
+      "/transaction-history/{universe}/{accountId}" : {
+        "post" : {
+          "description" : "Get transaction history list, endpoint used in website",
+          "operationId" : "transactionHistoryRoute",
+          "parameters" : [ {
+            "name" : "universe",
+            "in" : "path",
+            "description" : "universe",
+            "required" : true,
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          }, {
+            "name" : "accountId",
+            "in" : "path",
+            "description" : "accountId",
+            "required" : true,
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          } ],
+          "requestBody" : {
+            "description" : "Search data for request. Argument page in request body should start from 0.",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransactionHistoryBody"
+                }
+              }
+            },
+            "required" : true
+          },
+          "responses" : {
+            "200" : {
+              "description" : "Get transaction history list",
+              "content" : {
+                "*/*" : {
+                  "schema" : {
+                    "$ref" : "#/components/schemas/TransactionHistoryPageView"
+                  }
+                }
+              }
+            },
+            "500" : {
+              "description" : "Internal server error"
+            }
+          }
+        }
+      },
+      "/asset-flows/{universe}/{accountId}" : {
+        "get" : {
+          "description" : "Get asset flows, endpoint used in backoffice",
+          "operationId" : "assetFlowsRoute",
+          "parameters" : [ {
+            "name" : "universe",
+            "in" : "path",
+            "description" : "universe",
+            "required" : true,
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          }, {
+            "name" : "accountId",
+            "in" : "path",
+            "description" : "accountId",
+            "required" : true,
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          } ],
+          "responses" : {
+            "200" : {
+              "description" : "Get asset flows",
+              "content" : {
+                "*/*" : {
+                  "schema" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/AssetFlowView"
+                    }
+                  }
+                }
+              }
+            },
+            "500" : {
+              "description" : "Internal server error"
+            }
+          }
+        }
+      },
+      "/withdrawal-list/{universe}" : {
+        "get" : {
+          "description" : "Get withdrawal list, endpoint used in backoffice",
+          "operationId" : "withdrawalRoute",
+          "parameters" : [ {
+            "name" : "universe",
+            "in" : "path",
+            "description" : "universe",
+            "required" : true,
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          } ],
+          "responses" : {
+            "200" : {
+              "description" : "Get withdrawal list",
+              "content" : {
+                "*/*" : {
+                  "schema" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/WithdrawalView"
+                    }
+                  }
+                }
+              }
+            },
+            "500" : {
+              "description" : "Internal server error"
+            }
+          }
+        }
+      },
+      "/withdrawal-list/{universe}/{accountId}" : {
+        "get" : {
+          "description" : "Get withdrawal list by accountId, endpoint used in website",
+          "operationId" : "withdrawalForAccountRoute",
+          "parameters" : [ {
+            "name" : "universe",
+            "in" : "path",
+            "description" : "universe",
+            "required" : true,
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          }, {
+            "name" : "accountId",
+            "in" : "path",
+            "description" : "accountId",
+            "required" : true,
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          } ],
+          "responses" : {
+            "200" : {
+              "description" : "Get withdrawal list",
+              "content" : {
+                "*/*" : {
+                  "schema" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/WithdrawalViewForAccount"
+                    }
+                  }
+                }
+              }
+            },
+            "500" : {
+              "description" : "Internal server error"
+            }
+          }
+        }
+      }
+    },
+    "components" : {
+      "schemas" : {
+        "ListTransactionHistoryView" : {
+          "required" : [ "empty" ],
+          "type" : "array",
+          "properties" : {
+            "empty" : {
+              "type" : "boolean"
+            },
+            "traversableAgain" : {
+              "type" : "boolean"
+            }
+          },
+          "items" : {
+            "$ref" : "#/components/schemas/TransactionHistoryView"
+          }
+        },
+        "PageMeta" : {
+          "required" : [ "page", "perPage", "total", "totalPages" ],
+          "type" : "object",
+          "properties" : {
+            "page" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "perPage" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "total" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "totalPages" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        },
+        "TransactionHistoryPageView" : {
+          "required" : [ "data", "metadata" ],
+          "type" : "object",
+          "properties" : {
+            "data" : {
+              "required" : [ "empty" ],
+              "type" : "array",
+              "properties" : {
+                "empty" : {
+                  "type" : "boolean"
+                },
+                "traversableAgain" : {
+                  "type" : "boolean"
+                }
+              },
+              "items" : {
+                "$ref" : "#/components/schemas/TransactionHistoryView"
+              }
+            },
+            "metadata" : {
+              "$ref" : "#/components/schemas/PageMeta"
+            }
+          }
+        },
+        "TransactionHistoryView" : {
+          "required" : [ "balanceDelta", "currency", "date", "displayId", "displayedReason", "fundsLocked", "id", "status", "type" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "string"
+            },
+            "displayId" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "balanceDelta" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "balanceAfter" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "currency" : {
+              "type" : "string"
+            },
+            "date" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "status" : {
+              "type" : "string"
+            },
+            "type" : {
+              "type" : "string"
+            },
+            "cashout" : {
+              "type" : "boolean"
+            },
+            "displayedReason" : {
+              "type" : "string"
+            },
+            "fundsLocked" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        },
+        "TransactionHistoryBody" : {
+          "required" : [ "page", "perPage" ],
+          "type" : "object",
+          "properties" : {
+            "page" : {
+              "type" : "integer",
+              "format" : "int32"
+            },
+            "perPage" : {
+              "type" : "integer",
+              "format" : "int32"
+            },
+            "type" : {
+              "type" : "string"
+            },
+            "startDate" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "endDate" : {
+              "type" : "string",
+              "format" : "date-time"
+            }
+          }
+        },
+        "Function1RequestContextFutureRouteResult" : {
+          "type" : "object"
+        },
+        "AccountBasicReference" : {
+          "required" : [ "id", "name", "type" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "type" : {
+              "type" : "string"
+            },
+            "name" : {
+              "type" : "string"
+            }
+          }
+        },
+        "AssetFlowFormData" : {
+          "required" : [ "balanceDelta", "currency", "type" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "object"
+            },
+            "type" : {
+              "type" : "string"
+            },
+            "date" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "balanceDelta" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "balanceAfter" : {
+              "type" : "object"
+            },
+            "currency" : {
+              "type" : "string"
+            },
+            "details" : {
+              "$ref" : "#/components/schemas/Json"
+            },
+            "description" : {
+              "type" : "string"
+            }
+          }
+        },
+        "AssetFlowView" : {
+          "required" : [ "balanceAfter", "balanceDelta", "currency", "date", "details", "id", "transaction", "type" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "date" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "type" : {
+              "type" : "string"
+            },
+            "balanceDelta" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "balanceAfter" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "tax" : {
+              "type" : "object"
+            },
+            "currency" : {
+              "type" : "string"
+            },
+            "details" : {
+              "$ref" : "#/components/schemas/Json"
+            },
+            "description" : {
+              "type" : "string"
+            },
+            "transaction" : {
+              "$ref" : "#/components/schemas/TransactionView"
+            }
+          }
+        },
+        "Json" : {
+          "required" : [ "boolean" ],
+          "type" : "object",
+          "properties" : {
+            "boolean" : {
+              "type" : "boolean"
+            },
+            "number" : {
+              "type" : "boolean"
+            },
+            "string" : {
+              "type" : "boolean"
+            },
+            "object" : {
+              "type" : "boolean"
+            },
+            "array" : {
+              "type" : "boolean"
+            },
+            "null" : {
+              "type" : "boolean"
+            }
+          }
+        },
+        "ListAssetFlowFormData" : {
+          "type" : "array",
+          "properties" : {
+            "empty" : {
+              "type" : "boolean"
+            },
+            "traversableAgain" : {
+              "type" : "boolean"
+            }
+          },
+          "items" : {
+            "$ref" : "#/components/schemas/AssetFlowFormData"
+          }
+        },
+        "TransactionView" : {
+          "required" : [ "balanceDelta", "createdAt", "currency", "currencyRateAtCreation", "details", "finalized", "fundsLocked", "id", "operatorBalanceDelta", "status", "tags", "type", "updatedAt", "url", "wallet" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "url" : {
+              "type" : "string"
+            },
+            "type" : {
+              "type" : "string"
+            },
+            "status" : {
+              "type" : "string"
+            },
+            "details" : {
+              "$ref" : "#/components/schemas/Json"
+            },
+            "balanceDelta" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "fundsLocked" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "currency" : {
+              "type" : "string"
+            },
+            "tags" : {
+              "$ref" : "#/components/schemas/Json"
+            },
+            "assetFlows" : {
+              "type" : "array",
+              "properties" : {
+                "empty" : {
+                  "type" : "boolean"
+                },
+                "traversableAgain" : {
+                  "type" : "boolean"
+                }
+              },
+              "items" : {
+                "$ref" : "#/components/schemas/AssetFlowFormData"
+              }
+            },
+            "createdAt" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "updatedAt" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "finalizedAt" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "finalized" : {
+              "type" : "boolean"
+            },
+            "amount" : {
+              "type" : "object"
+            },
+            "operatorAmount" : {
+              "type" : "object"
+            },
+            "totalAmount" : {
+              "type" : "object"
+            },
+            "operatorTotalAmount" : {
+              "type" : "object"
+            },
+            "payout" : {
+              "type" : "object"
+            },
+            "operatorPayout" : {
+              "type" : "object"
+            },
+            "operatorBalanceDelta" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "profit" : {
+              "type" : "object"
+            },
+            "operatorProfit" : {
+              "type" : "object"
+            },
+            "currencyRateAtCreation" : {
+              "type" : "number"
+            },
+            "currencyRateAtFinalization" : {
+              "type" : "number"
+            },
+            "wallet" : {
+              "$ref" : "#/components/schemas/WalletReferenceView"
+            }
+          }
+        },
+        "WalletReferenceView" : {
+          "required" : [ "account", "id" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "string"
+            },
+            "account" : {
+              "$ref" : "#/components/schemas/AccountBasicReference"
+            }
+          }
+        },
+        "AutomaticWithdrawal" : {
+          "required" : [ "doNotShowUntil" ],
+          "type" : "object",
+          "properties" : {
+            "note" : {
+              "type" : "string"
+            },
+            "doNotShowUntil" : {
+              "type" : "string",
+              "format" : "date-time"
+            }
+          }
+        },
+        "WithdrawalView" : {
+          "required" : [ "accountId", "amount", "cardNumber", "currency", "id", "tdate" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "tdate" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "amount" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "accountId" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "assigneeId" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "currency" : {
+              "type" : "string"
+            },
+            "cardNumber" : {
+              "type" : "string"
+            },
+            "automaticWithdrawal" : {
+              "$ref" : "#/components/schemas/AutomaticWithdrawal"
+            }
+          }
+        },
+        "WithdrawalViewForAccount" : {
+          "required" : [ "accountId", "amount", "cardNumber", "currency", "id", "tdate" ],
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "tdate" : {
+              "type" : "string",
+              "format" : "date-time"
+            },
+            "amount" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "accountId" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "cardNumber" : {
+              "type" : "string"
+            },
+            "currency" : {
+              "type" : "string"
+            }
+          }
+        }
+      }
+    }
+  }
