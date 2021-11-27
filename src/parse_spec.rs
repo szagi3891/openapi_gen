@@ -9,14 +9,8 @@ use crate::open_api_spec::{SpecHandlerType, OpenApiMethod, SpecOpenApi};
 
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 struct Spec {
-    openapi: Value,
-    paths: HashMap<String, HashMap<String, Value>>,
-    components: Value,
-    info: Value,
-    security: Value,
-    servers: Value,
+    paths: HashMap<String, HashMap<String, Option<Value>>>,
 }
 
 
@@ -32,10 +26,12 @@ pub fn parse_spec(data: String) -> Result<SpecOpenApi, ErrorProcess> {
 
         
         for (method_name, method_body) in path_body {
-            let method_name = OpenApiMethod::from_string(method_name)?;
-            let method_body = parse_handler(method_body, &spec_raw)?;
+            if let Some(method_body) = method_body {
+                let method_name = OpenApiMethod::from_string(method_name)?;
+                let method_body = parse_handler(method_body, &spec_raw)?;
 
-            path_methods.insert(method_name, method_body);
+                path_methods.insert(method_name, method_body);
+            }
         }
 
         paths.insert(path, path_methods);
@@ -47,22 +43,11 @@ pub fn parse_spec(data: String) -> Result<SpecOpenApi, ErrorProcess> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 struct HandlerSpec {
     parameters: Option<Vec<Value>>,
     #[serde(rename = "requestBody")]
     request_body: Option<Value>,
     responses: Option<HashMap<String, Value>>,      //200 -> typ, 300 -> typ
-
-    //Ignore
-    #[serde(rename = "operationId")]
-    operation_id: Value,
-    security: Option<Value>,
-    tags: Option<Value>,
-    summary: Option<Value>,
-    description: Option<Value>,
-    deprecated: Option<Value>,
-    servers: Option<Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

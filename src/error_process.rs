@@ -1,11 +1,11 @@
 use std::num::ParseIntError;
 
-
 #[derive(Debug)]
 pub enum ErrorProcess {
     Message(String),
     DeserializeError(serde_json::Error),
-    ParseError(ParseIntError)
+    ParseError(ParseIntError),
+    StdError(std::io::Error),
 }
 
 impl From<serde_json::Error> for ErrorProcess {
@@ -17,6 +17,12 @@ impl From<serde_json::Error> for ErrorProcess {
 impl From<ParseIntError> for ErrorProcess {
     fn from(err: ParseIntError) -> Self {
         ErrorProcess::ParseError(err)
+    }
+}
+
+impl From<std::io::Error> for ErrorProcess {
+    fn from(err: std::io::Error) -> Self {
+        ErrorProcess::StdError(err)
     }
 }
 

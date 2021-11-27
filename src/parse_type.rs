@@ -1,16 +1,30 @@
-use crate::open_api_type::OpenApiType;
+use crate::{open_api_type::OpenApiType};
 use serde_json::Value;
-use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use crate::error_process::ErrorProcess;
 
 pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorProcess> {
+    let data = filter_null(&data);
+
+    println!("{:#?}", data);
+    println!("===========================================================");
+    println!("===========================================================");
+    println!("===========================================================");
 
     if let Some(data) = parse_type_content(&data, all_spec)? {
         return Ok(data);
     }
 
+    if let Some(data) = parse_type_schema(&data, all_spec)? {
+        return Ok(data);
+    }
+
     if let Some(data) = parse_type_ref(&data, all_spec)? {
+        return Ok(data);
+    }
+
+    if let Some(data) = parse_type_empty_object(&data)? {
         return Ok(data);
     }
 
@@ -19,39 +33,61 @@ pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorPro
     }
 
     if let Some(type_value) = get_type(&data) {
+        println!("Przetwarzam typ ===> {type_value}");
+
         if type_value == "string" {
             return parse_type_string(&data);
         }
 
-        if type_value  == "array" {
+        if type_value == "array" {
             return parse_type_array(&data, all_spec);
+        }
+
+        if type_value == "object" {
+            if let Some(data) = parse_type_object_additional_properties(&data, all_spec)? {
+                return Ok(data);
+            }
+
+            if let Some(data) = parse_type_object(&data, all_spec)? {
+                return Ok(data);
+            }
+
+            //additionalProperties
+
+            println!("Nieobsłuony wariant ... {:#?}", data);
+            panic!("TOODSDADSA");
+        }
+
+        if type_value == "integer" {
+            return parse_type_integer(&data);
+        }
+
+        if type_value == "number" {
+            return parse_type_number(&data);
+        }
+
+        if type_value == "boolean" {
+            return parse_type_boolean(&data);
         }
     }
 
-    println!("");
-    println!("");
-    println!("prsujemy wartość {data:#?}");
-    println!("");
-    println!("");
+    // Err(ErrorProcess::message("No match"))
 
-    todo!()
+    println!("{:#?}", data);
+    panic!("Not match");
 }
+
 
 fn parse_type_content(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
     #[derive(Debug, Serialize, Deserialize)]
     #[serde(deny_unknown_fields)]
     struct ContentSpec {
-        content: HashMap<String, ContentSchemaSpec>,
+        content: HashMap<String, Value>,
         description: Option<Value>,
         r#in: Option<Value>,
         name: Option<Value>,
         required: Option<Value>,
-    }
-    
-    #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct ContentSchemaSpec {
-        schema: Value,
+        headers: Option<Value>,
     }
 
     if let Ok(data) = serde_json::from_value::<ContentSpec>(data.clone()) {
@@ -63,23 +99,36 @@ fn parse_type_content(data: &Value, all_spec: &Value) -> Result<Option<OpenApiTy
             list.push(item);
         }
 
-        let schema = list.pop();
+        let content_value = list.pop();
 
         if list.len() > 0 {
             let content_message = content_name.join(", ");
             return Err(ErrorProcess::message(format!("ContentSpec: one parameter was expected, received {content_message}")));
         }
 
-        let schema = match schema {
+        let content_value = match content_value {
             Some(schema) => schema,
             None => {
                 return Err(ErrorProcess::message("Schema is missing"));
             }
         };
 
-        let result = parse_type(schema.schema, all_spec)?;
-
+        let result = parse_type(content_value, all_spec)?;
         return Ok(Some(result));
+    }
+
+    Ok(None)
+}
+
+fn parse_type_schema(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
+    #[derive(Debug, Serialize, Deserialize)]
+    struct SchemaSpec {
+        schema: Value,
+    }
+
+    if let Ok(data) = serde_json::from_value::<SchemaSpec>(data.clone()) {
+        let schema_type = parse_type(data.schema, all_spec)?;
+        return Ok(Some(schema_type));
     }
 
     Ok(None)
@@ -103,7 +152,6 @@ fn get_type(data: &Value) -> Option<String> {
 fn parse_type_string(data: &Value) -> Result<OpenApiType, ErrorProcess> {
 
     #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
     struct StringSpec {
         r#type: String,                 //ignore
         format: Option<Value>,          //ignore
@@ -118,10 +166,131 @@ fn parse_type_string(data: &Value) -> Result<OpenApiType, ErrorProcess> {
     })
 }
 
+fn parse_type_integer(data: &Value) -> Result<OpenApiType, ErrorProcess> {
+    #[derive(Debug, Serialize, Deserialize)]
+    struct StringSpec {
+        r#type: String,                 //ignore
+    }
+
+    let _spec = serde_json::from_value::<StringSpec>(data.clone())?;
+
+    Ok(OpenApiType::Number {
+        required: true
+    })
+}
+
+
+fn parse_type_number(data: &Value) -> Result<OpenApiType, ErrorProcess> {
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct StringSpec {
+        r#type: String,                 //ignore
+        format: Option<Value>,          //ignore
+        description: Option<Value>,     //ignore
+    }
+
+    let _spec = serde_json::from_value::<StringSpec>(data.clone())?;
+
+    Ok(OpenApiType::Number {
+        required: true
+    })
+}
+
+
+fn parse_type_boolean(data: &Value) -> Result<OpenApiType, ErrorProcess> {
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct StringSpec {
+        r#type: String,                 //ignore
+        format: Option<Value>,          //ignore
+        description: Option<Value>,     //ignore
+    }
+
+    let _spec = serde_json::from_value::<StringSpec>(data.clone())?;
+
+    Ok(OpenApiType::Boolean {
+        required: true
+    })
+}
+
+fn convert_required(required: Option<Vec<String>>) -> Result<HashSet<String>, ErrorProcess> {
+    let mut out = HashSet::new();
+
+    if let Some(required) = required {
+        let required_message = required.join(", ");
+
+        for item in required {
+            let is_set = out.insert(item);
+
+            if is_set == false {
+                return Err(ErrorProcess::message(format!("duplicate values {required_message}")));
+            }
+        }
+    }
+
+    Ok(out)
+}
+
+fn parse_type_object_additional_properties(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct ObjectSpec {
+        r#type: String,
+        #[serde(rename = "additionalProperties")]
+        additional_properties: Value,
+    }
+
+    if let Ok(spec) = serde_json::from_value::<ObjectSpec>(data.clone()) {
+        let value = parse_type(spec.additional_properties, all_spec)?;
+
+        return Ok(Some(OpenApiType::Record {
+            required: true,
+            value: Box::new(value),
+        }));
+    }
+
+    Ok(None)
+}
+
+fn parse_type_object(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct ObjectSpec {
+        r#type: String,                             //ignore
+        properties: Option<HashMap<String, Value>>,
+        required: Option<Vec<String>>,
+    }
+
+    if let Ok(spec) = serde_json::from_value::<ObjectSpec>(data.clone()) {
+
+        let mut props_all: HashMap<String, OpenApiType> = HashMap::new();
+
+        let required = convert_required(spec.required)?;
+
+        for (prop_name, prop_spec) in spec.properties.unwrap_or(HashMap::new()) {
+            let prop_type = parse_type(prop_spec, all_spec)?;
+            let is_required = required.contains(&prop_name);
+
+            let prev_option = props_all.insert(prop_name.clone(), prop_type.set_required(is_required));
+            if prev_option.is_some() {
+                return Err(ErrorProcess::message(format!("duplicated properties: {prop_name}")))
+            }
+        }
+
+        return Ok(Some(OpenApiType::Object {
+            required: true,
+            props: props_all
+        }))
+    }
+
+    Ok(None)
+}
+
+
+
 fn parse_type_array(data: &Value, all_spec: &Value) -> Result<OpenApiType, ErrorProcess> {
 
     #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
     struct ArraySpec {
         r#type: String,
         items: Value,
@@ -134,6 +303,20 @@ fn parse_type_array(data: &Value, all_spec: &Value) -> Result<OpenApiType, Error
         required: true,
         items: Box::new(items)
     })
+}
+
+
+fn parse_type_empty_object(data: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Spec {
+    }
+
+    if let Ok(_spec) = serde_json::from_value::<Spec>(data.clone()) {
+        Ok(Some(OpenApiType::Unknown))
+    } else {
+        Ok(None)
+    }
 }
 
 
@@ -221,4 +404,19 @@ fn test_parse_ref() {
         parse_ref_path("#/components/schemas/WithdrawalViewForAccount").unwrap(),
         result
     );
+}
+
+
+fn filter_null<'a>(spec: &'a Value) -> Value {
+    if let Value::Object(data) = spec {
+        let mut new_data = data.clone();
+
+        new_data.retain(|_key: &String, value: &mut Value| -> bool {
+            *value != Value::Null
+        });
+
+        return Value::Object(new_data);
+    }
+
+    spec.clone()
 }

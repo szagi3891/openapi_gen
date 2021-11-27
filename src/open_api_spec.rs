@@ -27,7 +27,8 @@ pub enum OpenApiMethod {
     Post,
     Delete,
     Put,
-    Path
+    Path,
+    Patch
 }
 
 #[derive(Debug)]
@@ -47,8 +48,9 @@ impl OpenApiMethod {
             "delete" => OpenApiMethod::Delete,
             "put" => OpenApiMethod::Put,
             "path" => OpenApiMethod::Path,
+            "patch" => OpenApiMethod::Patch,
             _ => {
-                return Err(ErrorProcess::message("dsdsa"))
+                return Err(ErrorProcess::message(format!("unknown method = {name}")));
             }
         })
     }
@@ -64,7 +66,7 @@ impl ParamIn {
             "query" => ParamIn::Query,
             "header" => ParamIn::Header,
             _ => {
-                return Err(ErrorProcess::message("dsdsa"))
+                return Err(ErrorProcess::message(format!("unknown ParamIn = {name}")));
             }
         })
     }
