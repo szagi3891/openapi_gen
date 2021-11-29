@@ -51,7 +51,7 @@ impl Display for OpenApiMethod {
             Self::Post => "post",
             Self::Delete => "delete",
             Self::Put => "put",
-            Self::Patch => "path",
+            Self::Patch => "patch",
         };
 
         write!(fmt, "{name}")
