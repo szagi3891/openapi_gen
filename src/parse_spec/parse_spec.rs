@@ -15,7 +15,17 @@ struct Spec {
 
 
 pub fn parse_spec(data: String) -> Result<SpecOpenApi, ErrorProcess> {
-    let spec_raw = serde_json::from_str::<serde_json::Value>(&data).unwrap();
+    let spec_raw = match serde_json::from_str::<serde_json::Value>(&data) {
+        Ok(data) => data,
+        Err(err) => {
+            println!("\n\n");
+            println!("Data: {data}");
+            println!("\n\n");
+
+            return Err(ErrorProcess::message(format!("Problem with decoding {err}")));
+        }
+    };
+
 
     let spec = serde_json::from_value::<Spec>(spec_raw.clone())?;
 

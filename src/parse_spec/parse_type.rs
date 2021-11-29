@@ -1,7 +1,7 @@
 use crate::{open_api_type::OpenApiType, utils::OrderHashMap};
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use crate::utils::ErrorProcess;
 
 pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorProcess> {

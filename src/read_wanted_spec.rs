@@ -1,4 +1,4 @@
-use std::{collections::{HashMap}, fs, path::PathBuf, str::FromStr};
+use std::{collections::{HashMap}, fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::{open_api_spec::OpenApiMethod, utils::{get_file_name, ErrorProcess}};
@@ -52,6 +52,7 @@ fn parse_spec_name(path: &PathBuf) -> Result<Option<String>, ErrorProcess> {
 
 #[test]
 fn test_parse_spec_name() {
+    use std::str::FromStr;
     let path = PathBuf::from_str("rrr/dddd/ttrree.spec.json").unwrap();
     let name = parse_spec_name(&path).unwrap().unwrap();
 
