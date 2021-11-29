@@ -1,7 +1,8 @@
-use std::collections::HashMap;
-use crate::{error_process::ErrorProcess, open_api_type::OpenApiType};
+use std::{collections::HashMap, fmt::Display};
+use crate::{open_api_type::OpenApiType, utils::{ErrorProcess, OrderHashMap}};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ParamIn {
     Path,
     Body,
@@ -9,27 +10,32 @@ pub enum ParamIn {
     Header,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParametersType {
     pub where_in: ParamIn,    //'path' | 'body' | 'query' | 'header',
     pub name: String,
     pub api_type: OpenApiType
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpecHandlerType {                                    //TODO SpecHandlerType -> OpenApiHandler
     pub parameters: Vec<ParametersType>,
-    pub responses: HashMap<u16, OpenApiType>,
+    pub responses: OrderHashMap<u16, OpenApiType>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Clone)]
 pub enum OpenApiMethod {
+    #[serde(rename = "get")]
     Get,
+    #[serde(rename = "post")]
     Post,
+    #[serde(rename = "delete")]
     Delete,
+    #[serde(rename = "put")]
     Put,
-    Path,
+    #[serde(rename = "patch")]
     Patch
 }
+
 
 #[derive(Debug)]
 pub struct SpecOpenApi {
@@ -37,6 +43,20 @@ pub struct SpecOpenApi {
 }
 
 
+
+impl Display for OpenApiMethod {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Self::Get => "get",
+            Self::Post => "post",
+            Self::Delete => "delete",
+            Self::Put => "put",
+            Self::Patch => "path",
+        };
+
+        write!(fmt, "{name}")
+    }
+}
 
 impl OpenApiMethod {
     pub fn from_string(name: String) -> Result<OpenApiMethod, ErrorProcess> {
@@ -47,12 +67,15 @@ impl OpenApiMethod {
             "post" => OpenApiMethod::Post,
             "delete" => OpenApiMethod::Delete,
             "put" => OpenApiMethod::Put,
-            "path" => OpenApiMethod::Path,
             "patch" => OpenApiMethod::Patch,
             _ => {
                 return Err(ErrorProcess::message(format!("unknown method = {name}")));
             }
         })
+    }
+
+    pub fn to_upper_case(&self) -> String {
+        format!("{}", self).to_uppercase()
     }
 }
 
@@ -76,7 +99,7 @@ impl SpecHandlerType {
     pub fn new() -> SpecHandlerType {
         SpecHandlerType {
             parameters: Vec::new(),
-            responses: HashMap::new(),
+            responses: OrderHashMap::new(),
         }
     }
 
@@ -102,12 +125,7 @@ impl SpecHandlerType {
 
     pub fn add_response(&mut self, code: String, api_type: OpenApiType) -> Result<(), ErrorProcess> {
         let code = code.parse::<u16>()?;
-        let prev = self.responses.insert(code, api_type);
-
-        if prev.is_some() {
-            return Err(ErrorProcess::message(format!("Duplicate response codes {code}")));
-        }
-
+        self.responses.expect_insert(code, api_type)?;
         Ok(())
     }
 }
