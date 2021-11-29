@@ -1,16 +1,46 @@
-use crate::{open_api_type::OpenApiType};
+use crate::{open_api_type::OpenApiType, utils::OrderHashMap};
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use crate::error_process::ErrorProcess;
+use std::collections::{HashMap, HashSet, VecDeque};
+use crate::utils::ErrorProcess;
 
 pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorProcess> {
     let data = filter_null(&data);
 
-    println!("{:#?}", data);
-    println!("===========================================================");
-    println!("===========================================================");
-    println!("===========================================================");
+    if let Some(type_value) = get_type(&data) {
+        if type_value == "string" {
+            return parse_type_string(&data);
+        }
+
+        if type_value == "array" {
+            return parse_type_array(&data, all_spec);
+        }
+
+        if type_value == "object" {
+            if let Some(data) = parse_type_object_additional_properties(&data, all_spec)? {
+                return Ok(data);
+            }
+
+            if let Some(data) = parse_type_object(&data, all_spec)? {
+                return Ok(data);
+            }
+
+            println!("Data ... {data:#?}");
+            panic!("Not match object");
+        }
+
+        if type_value == "integer" {
+            return parse_type_integer(&data);
+        }
+
+        if type_value == "number" {
+            return parse_type_number(&data);
+        }
+
+        if type_value == "boolean" {
+            return parse_type_boolean(&data);
+        }
+    }
 
     if let Some(data) = parse_type_content(&data, all_spec)? {
         return Ok(data);
@@ -32,62 +62,24 @@ pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorPro
         return Ok(data);
     }
 
-    if let Some(type_value) = get_type(&data) {
-        println!("Przetwarzam typ ===> {type_value}");
-
-        if type_value == "string" {
-            return parse_type_string(&data);
-        }
-
-        if type_value == "array" {
-            return parse_type_array(&data, all_spec);
-        }
-
-        if type_value == "object" {
-            if let Some(data) = parse_type_object_additional_properties(&data, all_spec)? {
-                return Ok(data);
-            }
-
-            if let Some(data) = parse_type_object(&data, all_spec)? {
-                return Ok(data);
-            }
-
-            //additionalProperties
-
-            println!("Nieobsłuony wariant ... {:#?}", data);
-            panic!("TOODSDADSA");
-        }
-
-        if type_value == "integer" {
-            return parse_type_integer(&data);
-        }
-
-        if type_value == "number" {
-            return parse_type_number(&data);
-        }
-
-        if type_value == "boolean" {
-            return parse_type_boolean(&data);
-        }
+    if let Some(data) = parse_type_one_of(&data, all_spec)? {
+        return Ok(data);
     }
 
-    // Err(ErrorProcess::message("No match"))
-
-    println!("{:#?}", data);
+    println!("Data ... {data:#?}");
     panic!("Not match");
 }
 
 
 fn parse_type_content(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
     #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
     struct ContentSpec {
         content: HashMap<String, Value>,
-        description: Option<Value>,
-        r#in: Option<Value>,
-        name: Option<Value>,
-        required: Option<Value>,
-        headers: Option<Value>,
+        // description: Option<Value>,
+        // r#in: Option<Value>,
+        // name: Option<Value>,
+        // required: Option<Value>,
+        // headers: Option<Value>,
     }
 
     if let Ok(data) = serde_json::from_value::<ContentSpec>(data.clone()) {
@@ -182,11 +174,10 @@ fn parse_type_integer(data: &Value) -> Result<OpenApiType, ErrorProcess> {
 
 fn parse_type_number(data: &Value) -> Result<OpenApiType, ErrorProcess> {
     #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
     struct StringSpec {
         r#type: String,                 //ignore
-        format: Option<Value>,          //ignore
-        description: Option<Value>,     //ignore
+        // format: Option<Value>,          //ignore
+        // description: Option<Value>,     //ignore
     }
 
     let _spec = serde_json::from_value::<StringSpec>(data.clone())?;
@@ -199,11 +190,10 @@ fn parse_type_number(data: &Value) -> Result<OpenApiType, ErrorProcess> {
 
 fn parse_type_boolean(data: &Value) -> Result<OpenApiType, ErrorProcess> {
     #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
     struct StringSpec {
         r#type: String,                 //ignore
-        format: Option<Value>,          //ignore
-        description: Option<Value>,     //ignore
+        // format: Option<Value>,          //ignore
+        // description: Option<Value>,     //ignore
     }
 
     let _spec = serde_json::from_value::<StringSpec>(data.clone())?;
@@ -254,7 +244,6 @@ fn parse_type_object_additional_properties(data: &Value, all_spec: &Value) -> Re
 
 fn parse_type_object(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
     #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
     struct ObjectSpec {
         r#type: String,                             //ignore
         properties: Option<HashMap<String, Value>>,
@@ -263,7 +252,7 @@ fn parse_type_object(data: &Value, all_spec: &Value) -> Result<Option<OpenApiTyp
 
     if let Ok(spec) = serde_json::from_value::<ObjectSpec>(data.clone()) {
 
-        let mut props_all: HashMap<String, OpenApiType> = HashMap::new();
+        let mut props_all: OrderHashMap<String, OpenApiType> = OrderHashMap::new();
 
         let required = convert_required(spec.required)?;
 
@@ -271,10 +260,7 @@ fn parse_type_object(data: &Value, all_spec: &Value) -> Result<Option<OpenApiTyp
             let prop_type = parse_type(prop_spec, all_spec)?;
             let is_required = required.contains(&prop_name);
 
-            let prev_option = props_all.insert(prop_name.clone(), prop_type.set_required(is_required));
-            if prev_option.is_some() {
-                return Err(ErrorProcess::message(format!("duplicated properties: {prop_name}")))
-            }
+            props_all.expect_insert(prop_name.clone(), prop_type.set_required(is_required))?;
         }
 
         return Ok(Some(OpenApiType::Object {
@@ -331,6 +317,44 @@ fn parse_type_only_description(data: &Value) -> Result<Option<OpenApiType>, Erro
         Ok(Some(OpenApiType::Unknown))
     } else {
         Ok(None)
+    }
+}
+
+
+
+fn parse_type_one_of(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct Spec {
+        #[serde(rename = "oneOf")]
+        one_of: Vec<Value>,
+    }
+
+    if let Ok(spec) = serde_json::from_value::<Spec>(data.clone()) {
+        let mut one_of = Vec::<OpenApiType>::new();
+        
+        for item in spec.one_of {
+            let item_type = parse_type(item, all_spec)?;
+            one_of.push(item_type);
+        }
+
+        if let Some((first, rest)) = one_of.as_slice().split_first() {
+            if rest.len() == 0 {
+                let first = (*first).clone();
+                return Ok(Some(first));
+            }
+
+        } else {
+            log::error!("error parse {data:#?}");
+            return Err(ErrorProcess::message("Incorrect data in section 'oneOf'"));
+        }
+
+        return Ok(Some(OpenApiType::Union {
+            required: true,
+            list: one_of,
+        }));
+    } else {
+        return Ok(None);
     }
 }
 

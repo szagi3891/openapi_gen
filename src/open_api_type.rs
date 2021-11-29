@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use crate::utils::OrderHashMap;
 
-#[derive(Debug)]
+
+#[derive(Debug, Clone)]
 pub enum OpenApiType {
     String {
         required: bool,
@@ -17,7 +18,7 @@ pub enum OpenApiType {
     },
     Object {
         required: bool,
-        props: HashMap<String, OpenApiType>,
+        props: OrderHashMap<String, OpenApiType>,
     },
     Record {
         required: bool,

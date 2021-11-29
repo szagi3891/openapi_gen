@@ -1,10 +1,23 @@
 #![feature(format_args_capture)]
 
 use std::env;
-use openapi_gen::process;
 
-fn main(){
-    println!("odpalam main openapi");
+mod utils;
+mod open_api_type;
+mod open_api_spec;
+mod parse_spec;
+mod run_gen;
+mod read_wanted_spec;
+mod generate_js;
+
+use utils::ErrorProcess;
+
+
+#[tokio::main]
+async fn main() -> Result<(), ErrorProcess> {
+    env_logger::init();
+
+    log::info!("odpalam main openapi");
 
     let mut args= env::args();
     
@@ -15,8 +28,10 @@ fn main(){
     let target_spec = args.next();
 
     if let (Some(dir_spec), Some(dir_target), Some(base_url), Some(target_spec)) = (dir_spec, dir_target, base_url, target_spec) {
-        process(dir_spec, dir_target, base_url, target_spec);
+        run_gen::run_gen(dir_spec, dir_target, base_url, target_spec).await?;
     } else {
-        panic!("Incorrect parameters");
+        return Err(ErrorProcess::message("Incorrect parameters"));
     }
+
+    Ok(())
 }
