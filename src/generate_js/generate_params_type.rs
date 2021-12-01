@@ -11,7 +11,6 @@ fn add_require(require: bool, type_param: impl Into<String>) -> String {
 
 pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
     let right = '}';
-    let next_ident = ident + 4;
 
     match type_param {
         OpenApiType::String { required } => add_require(*required, "string"),
@@ -24,6 +23,7 @@ pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
             add_require(*required, result)
         },
         OpenApiType::Object { required, props } => {
+            let next_ident = ident + 4;
             let mut out = Vec::<String>::new();
 
             out.push("{".into());
@@ -50,7 +50,7 @@ pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
             add_require(*required, union_type)
         }
         OpenApiType::Record { required, value } => {
-            let inner_type = generate_type_ts(next_ident, value);
+            let inner_type = generate_type_ts(ident, value);
             let value_srt = format!("Record<string, {inner_type}>");
             add_require(*required, value_srt)
         }
