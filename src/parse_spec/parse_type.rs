@@ -7,6 +7,14 @@ use crate::utils::ErrorProcess;
 pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorProcess> {
     let data = filter_null(&data);
 
+    if let Some(data) = parse_type_one_of_with_discriminator(&data, all_spec)? {
+        return Ok(data);
+    }
+
+    if let Some(data) = parse_type_one_of(&data, all_spec)? {
+        return Ok(data);
+    }
+
     if let Some(type_value) = get_type(&data) {
         if type_value == "string" {
             return parse_type_string(&data);
@@ -59,10 +67,6 @@ pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorPro
     }
 
     if let Some(data) = parse_type_only_description(&data)? {
-        return Ok(data);
-    }
-
-    if let Some(data) = parse_type_one_of(&data, all_spec)? {
         return Ok(data);
     }
 
@@ -320,7 +324,75 @@ fn parse_type_only_description(data: &Value) -> Result<Option<OpenApiType>, Erro
     }
 }
 
+fn get_ref_name_last_chunk(ref_path: impl Into<String>) -> String {
+    let ref_path: String = ref_path.into();
 
+    let mut chunk = ref_path.split("/").collect::<Vec<_>>();
+    chunk.pop().unwrap().to_string()
+}
+
+#[test]
+fn test_get_ref_name_last_chunk() {
+    assert_eq!(get_ref_name_last_chunk("#/components/schemas/CreateSessionResponseOk"), "CreateSessionResponseOk")
+}
+
+fn get_ref_name(item: Value) -> String {
+    #[derive(Debug, Serialize, Deserialize)]
+
+    struct ObjectRef {
+        #[serde(rename = "$ref")]
+        r#ref: String,
+    }
+
+    let data = serde_json::from_value::<ObjectRef>(item).unwrap();
+
+    get_ref_name_last_chunk(data.r#ref)
+}
+
+fn parse_type_one_of_with_discriminator(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
+
+    #[derive(Debug, Serialize, Deserialize)]
+
+    struct DiscriminatorInner {
+        #[serde(rename="propertyName")]
+        property_name: String,
+    }
+    #[derive(Debug, Serialize, Deserialize)]
+    struct Spec {
+        #[serde(rename = "oneOf")]
+        one_of: Vec<Value>,
+        discriminator: DiscriminatorInner
+    }
+
+    if let Ok(spec) = serde_json::from_value::<Spec>(data.clone()) {
+        let mut one_of = Vec::<OpenApiType>::new();
+        
+        for item in spec.one_of {
+            let mut item_type = parse_type(item.clone(), all_spec)?;
+            let ref_name = get_ref_name(item);
+            item_type.object_try_add_literal_field(&spec.discriminator.property_name, ref_name);
+            one_of.push(item_type);
+        }
+
+        if let Some((first, rest)) = one_of.as_slice().split_first() {
+            if rest.len() == 0 {
+                let first = (*first).clone();
+                return Ok(Some(first));
+            }
+
+        } else {
+            log::error!("error parse {data:#?}");
+            return Err(ErrorProcess::message("Incorrect data in section 'oneOf'"));
+        }
+
+        return Ok(Some(OpenApiType::Union {
+            required: true,
+            list: one_of,
+        }));
+    } else {
+        return Ok(None);
+    }
+}
 
 fn parse_type_one_of(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
 

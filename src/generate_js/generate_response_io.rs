@@ -16,6 +16,7 @@ fn generate_type_io(ident: u32, type_param: &OpenApiType) -> String {
     let right = '}';
 
     match type_param {
+        OpenApiType::LiteralString { required, value } => add_require(*required, format!("t.literal('{value}')")),
         OpenApiType::String { required } => add_require(*required, "t.string"),
         OpenApiType::Number { required } => add_require(*required, "t.number"),
         OpenApiType::Boolean { required } => add_require(*required, "t.boolean"),

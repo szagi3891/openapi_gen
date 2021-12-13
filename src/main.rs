@@ -1,5 +1,3 @@
-#![feature(format_args_capture)]
-
 use std::env;
 
 mod utils;

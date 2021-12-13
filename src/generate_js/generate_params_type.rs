@@ -13,6 +13,7 @@ pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
     let right = '}';
 
     match type_param {
+        OpenApiType::LiteralString { required, value } => add_require(*required, format!("'{value}'")),
         OpenApiType::String { required } => add_require(*required, "string"),
         OpenApiType::Number { required } => add_require(*required, "number"),
         OpenApiType::Boolean { required } => add_require(*required, "boolean"),
@@ -46,7 +47,7 @@ pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
                 result_types.push(generate_type_ts(0, list_item));
             }
 
-            let union_type = result_types.join("\n | \n");
+            let union_type = result_types.join(" | ");
             add_require(*required, union_type)
         }
         OpenApiType::Record { required, value } => {
