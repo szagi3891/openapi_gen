@@ -155,11 +155,13 @@ export const {name_in_file} = async (api_url: string, api_timeout: number, backe
 {right};
 
 
-export type {name_in_file_camelcase_big}Params = ParamsType;
+export type {name_in_file_camelcase_big}ParamsType = ParamsType;
 
-export type {name_in_file_camelcase_big}Response = {generic_response_types};
+export type {name_in_file_camelcase_big}ResponseType = {generic_response_types};
 
-export const {name_in_file_camelcase_small}Request = async (api_url: string, api_timeout: number, backendToken: string, params: ParamsType): Promise<{name_in_file_camelcase_big}Response> => {left}
+export type {name_in_file_camelcase_big}Response200Type = Response200Type;
+
+export const {name_in_file_camelcase_small}Request = async (api_url: string, api_timeout: number, backendToken: string, params: ParamsType): Promise<{name_in_file_camelcase_big}ResponseType> => {left}
     const response = await {name_in_file}(api_url, api_timeout, backendToken, params);
     const {left} status, body {right} = response;
     const bodyParsed = jsonParse(body);
