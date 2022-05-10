@@ -366,6 +366,11 @@ fn parse_type_one_of_with_discriminator(data: &Value, all_spec: &Value) -> Resul
             union.push(item_type);
         }
 
+        if union.len() == 1 {
+            let variant = union.pop().unwrap();
+            return Ok(Some(variant));
+        }
+
         return Ok(Some(OpenApiType::Union {
             required: true,
             list: union,
@@ -400,6 +405,11 @@ fn parse_type_one_of(data: &Value, all_spec: &Value) -> Result<Option<OpenApiTyp
         } else {
             log::error!("error parse {data:#?}");
             return Err(ErrorProcess::message("Incorrect data in section 'oneOf'"));
+        }
+
+        if one_of.len() == 1 {
+            let variant = one_of.pop().unwrap();
+            return Ok(Some(variant));
         }
 
         return Ok(Some(OpenApiType::Union {
