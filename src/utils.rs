@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use core::hash::Hash;
 use std::fmt::Debug;
+use serde::de::DeserializeOwned;
 
 pub fn get_file_name(path: &PathBuf) -> Result<String, ErrorProcess> {
     let file_name = match path.file_name() {
@@ -98,5 +99,18 @@ impl<K: Eq + Hash + Clone + Debug + Ord, V> OrderHashMap<K, V> {
         });
 
         result
+    }
+}
+
+
+pub fn expect_json<T: DeserializeOwned>(value: &serde_json::Value) -> T {
+    let data = serde_json::from_value::<T>(value.clone());
+
+    match data {
+        Ok(data) => data,
+        Err(error) => {
+            dbg!(value.clone());
+            panic!("deserialisation problem {error}");
+        }
     }
 }

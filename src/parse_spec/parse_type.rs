@@ -1,12 +1,11 @@
 use crate::{open_api_type::OpenApiType, utils::OrderHashMap};
+use super::filters::get_sorted_map;
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use crate::utils::ErrorProcess;
 
 pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorProcess> {
-    let data = filter_null(&data);
-
     if let Some(data) = parse_type_one_of_with_discriminator(&data, all_spec)? {
         return Ok(data);
     }
@@ -58,10 +57,6 @@ pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorPro
         return Ok(data);
     }
 
-    if let Some(data) = parse_type_ref(&data, all_spec)? {
-        return Ok(data);
-    }
-
     if let Some(data) = parse_type_empty_object(&data)? {
         return Ok(data);
     }
@@ -70,8 +65,10 @@ pub fn parse_type(data: Value, all_spec: &Value) -> Result<OpenApiType, ErrorPro
         return Ok(data);
     }
 
-    println!("Data ... {data:#?}");
-    panic!("Not match");
+    log::error!("Data ... {data:#?}");
+    log::error!("Not match");
+
+    Ok(OpenApiType::Unknown)
 }
 
 
@@ -324,29 +321,13 @@ fn parse_type_only_description(data: &Value) -> Result<Option<OpenApiType>, Erro
     }
 }
 
-fn get_sorted_map(mapping: HashMap<String, String>) -> Vec<(String, String)> {
-    let mut list = Vec::new();
-
-    for (name, value) in mapping {
-        list.push((name, value));
-    }
-
-    use std::cmp::Ordering;
-
-    list.sort_by(|(akey, _), (bkey, _)| -> Ordering {
-        akey.cmp(bkey)
-    });
-
-    list
-}
-
 fn parse_type_one_of_with_discriminator(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
 
     #[derive(Debug, Serialize, Deserialize)]
     struct DiscriminatorInner {
         #[serde(rename="propertyName")]
         property_name: String,
-        mapping: HashMap<String, String>,
+        mapping: HashMap<String, Value>,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -357,8 +338,9 @@ fn parse_type_one_of_with_discriminator(data: &Value, all_spec: &Value) -> Resul
     if let Ok(spec) = serde_json::from_value::<Spec>(data.clone()) {
         let mut union = Vec::<OpenApiType>::new();
         
-        for (ref_name, ref_spec) in get_sorted_map(spec.discriminator.mapping).iter() {
-            let ref_spec = go_to_spec(all_spec, ref_spec)?;
+        let mapping_iterator = spec.discriminator.mapping.into_iter();
+
+        for (ref_name, ref_spec) in get_sorted_map(mapping_iterator).iter() {
             let mut item_type = parse_type(ref_spec.clone(), all_spec)?;
 
             item_type.object_try_add_literal_field(&spec.discriminator.property_name, ref_name);
@@ -421,89 +403,3 @@ fn parse_type_one_of(data: &Value, all_spec: &Value) -> Result<Option<OpenApiTyp
     }
 }
 
-
-
-fn parse_type_ref(data: &Value, all_spec: &Value) -> Result<Option<OpenApiType>, ErrorProcess> {
-    #[derive(Debug, Serialize, Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct RefSpec {
-        #[serde(rename = "$ref")]
-        r#ref: String,
-    }
-
-    if let Ok(spec) = serde_json::from_value::<RefSpec>(data.clone()) {
-        let ref_spec = go_to_spec(all_spec, &spec.r#ref)?;
-
-        let spec = parse_type(ref_spec.clone(), all_spec)?;
-
-        Ok(Some(spec))
-    } else {
-        Ok(None)
-    }
-}
-
-
-fn go_to_spec<'a>(all_spec: &'a Value, ref_path: &str) -> Result<&'a Value, ErrorProcess> {
-    let ref_path_list = parse_ref_path(&ref_path)?;
-
-    let mut current = all_spec;
-
-    for property in ref_path_list {
-        current = go_to_spec_property(current, &property, ref_path)?;
-    }
-
-    Ok(current)
-}
-
-fn go_to_spec_property<'a>(spec: &'a Value, property: &str, ref_path: &str) -> Result<&'a Value, ErrorProcess> {
-    match spec {
-        Value::Object(data) => {
-            match data.get(property) {
-                Some(value) => {
-                    Ok(value)
-                },
-                None => {
-                    let message = format!("invalid ref {ref_path}, Error with reference to property = {property}, no value");
-                    Err(ErrorProcess::message(message))
-                }
-            }
-        },
-        _ => {
-            let message = format!("invalid ref {ref_path}, Error with reference to property = {property}, no map");
-            Err(ErrorProcess::message(message))
-        }
-    }
-}
-
-fn parse_ref_path(path: &str) -> Result<Vec<String>, ErrorProcess> {
-    if let Some((_, path)) = path.split_once("#/") {
-        Ok(path.split("/").map(|item| item.to_string()).collect())        
-    } else {
-        Err(ErrorProcess::message(format!("invalid ref {path}")))
-    }
-}
-
-#[test]
-fn test_parse_ref() {
-    let result: Vec<String> = vec!("components".into(), "schemas".into(), "WithdrawalViewForAccount".into());
-
-    assert_eq!(
-        parse_ref_path("#/components/schemas/WithdrawalViewForAccount").unwrap(),
-        result
-    );
-}
-
-
-fn filter_null<'a>(spec: &'a Value) -> Value {
-    if let Value::Object(data) = spec {
-        let mut new_data = data.clone();
-
-        new_data.retain(|_key: &String, value: &mut Value| -> bool {
-            *value != Value::Null
-        });
-
-        return Value::Object(new_data);
-    }
-
-    spec.clone()
-}

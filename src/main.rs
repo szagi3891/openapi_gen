@@ -13,9 +13,9 @@ use utils::ErrorProcess;
 
 #[tokio::main]
 async fn main() -> Result<(), ErrorProcess> {
+    log::set_max_level(log::LevelFilter::Warn);
     env_logger::init();
-
-    log::info!("odpalam main openapi");
+    log::set_max_level(log::LevelFilter::Warn);
 
     let mut args= env::args();
     

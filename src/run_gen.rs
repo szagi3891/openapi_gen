@@ -8,25 +8,21 @@ use crate::read_wanted_spec::{FixUrlParamItem, WantedMethod, WantedSource, Wante
 use crate::parse_spec::{fix_url_param, parse_spec};
 
 pub async fn run_gen(dir_spec: String, dir_target: String, base_url: String, target_spec: String) -> Result<(), ErrorProcess> {
-    let mut wanted_spec = read_wanted_spec(&dir_spec)?;
-
-    if target_spec != "all" {
-        wanted_spec.retain(|key, _| {
-            *key == target_spec
-        });
-    }
+    let wanted_spec = read_wanted_spec(&dir_spec)?;
 
     for (prefix, WantedSpec { source, mut methods }) in wanted_spec {
-        let (mut spec, fix_url_param_opt) = get_spec(&dir_spec, &base_url, source).await?;
+        if prefix == "all" || prefix == target_spec {
+            let (mut spec, fix_url_param_opt) = get_spec(&dir_spec, &base_url, source).await?;
 
-        if let Some(fix_url_param_list) = fix_url_param_opt {
-            for FixUrlParamItem { from, to } in fix_url_param_list.into_iter() {
-                fix_url_param(&mut spec, &mut methods, from, to)
+            if let Some(fix_url_param_list) = fix_url_param_opt {
+                for FixUrlParamItem { from, to } in fix_url_param_list.into_iter() {
+                    fix_url_param(&mut spec, &mut methods, from, to)
+                }
             }
-        }
 
-        remove_files_from_prefix(&dir_target, &prefix).await?;
-        run_gen_for_prefix(&dir_target, prefix, spec, methods).await?;
+            remove_files_from_prefix(&dir_target, &prefix).await?;
+            run_gen_for_prefix(&dir_target, prefix, spec, methods).await?;
+        }
     }
 
     Ok(())
@@ -68,7 +64,7 @@ async fn get_spec(dir_spec: &String, base_url: &String, source: WantedSource) ->
         }
     };
 
-    let spec = parse_spec(spec_source)?;
+    let spec = parse_spec(spec_source);
     Ok((spec, fix_url_param))
 }
 

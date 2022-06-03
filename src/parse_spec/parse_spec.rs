@@ -1,10 +1,10 @@
+use super::filters::{filter_deref, filter_null};
 use super::parse_type::parse_type;
 use serde_json::Value;
 use serde::{Serialize, Deserialize};
-// use serde::Serialize;
 use std::collections::HashMap;
 
-use crate::utils::ErrorProcess;
+use crate::utils::{ErrorProcess, expect_json};
 use crate::open_api_spec::{SpecHandlerType, OpenApiMethod, SpecOpenApi};
 
 
@@ -14,20 +14,22 @@ struct Spec {
 }
 
 
-pub fn parse_spec(data: String) -> Result<SpecOpenApi, ErrorProcess> {
+pub fn parse_spec(data: String) -> SpecOpenApi {
     let spec_raw = match serde_json::from_str::<serde_json::Value>(&data) {
-        Ok(data) => data,
+        Ok(data) => Ok(data),
         Err(err) => {
             println!("\n\n");
             println!("Data: {data}");
             println!("\n\n");
 
-            return Err(ErrorProcess::message(format!("Problem with decoding {err}")));
+            Err(ErrorProcess::message(format!("Problem with decoding {err}")))
         }
-    };
+    }.unwrap();
 
+    let spec_raw = filter_deref(spec_raw);
+    let spec_raw = filter_null(spec_raw);
 
-    let spec = serde_json::from_value::<Spec>(spec_raw.clone())?;
+    let spec = expect_json::<Spec>(&spec_raw);
 
     let mut paths: HashMap<String, HashMap<OpenApiMethod, SpecHandlerType>> = HashMap::new();
 
@@ -37,8 +39,9 @@ pub fn parse_spec(data: String) -> Result<SpecOpenApi, ErrorProcess> {
         
         for (method_name, method_body) in path_body {
             if let Some(method_body) = method_body {
-                let method_name = OpenApiMethod::from_string(method_name)?;
-                let method_body = parse_handler(method_body, &spec_raw)?;
+
+                let method_name = OpenApiMethod::from_string(method_name).unwrap();
+                let method_body = parse_handler(method_body, &spec_raw);
 
                 path_methods.insert(method_name, method_body);
             }
@@ -47,9 +50,9 @@ pub fn parse_spec(data: String) -> Result<SpecOpenApi, ErrorProcess> {
         paths.insert(path, path_methods);
     }
 
-    Ok(SpecOpenApi {
+    SpecOpenApi {
         paths
-    })
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -72,36 +75,36 @@ struct RequestBody {
     required: Option<bool>,
 }
 
-pub fn parse_handler(body_raw: Value, spec: &Value) -> Result<SpecHandlerType, ErrorProcess> {
+pub fn parse_handler(body_raw: Value, spec: &Value) -> SpecHandlerType {
 
     let mut result = SpecHandlerType::new();
 
-    let body = serde_json::from_value::<HandlerSpec>(body_raw.clone())?;
+    let body = expect_json::<HandlerSpec>(&body_raw);
 
     if let Some(parameters) = body.parameters {
         for param in parameters {
-            let param_decode = serde_json::from_value::<ParameterSpec>(param.clone())?;
-            let param_type = parse_type(param, spec)?;
+            let param_decode = expect_json::<ParameterSpec>(&param);
+            let param_type = parse_type(param, spec).unwrap();
             let required: bool = param_decode.required.unwrap_or(false);
 
-            result.add_param(param_decode.name, param_decode.r#in, param_type, required)?;
+            result.add_param(param_decode.name, param_decode.r#in, param_type, required).unwrap();
         }
     }
 
     if let Some(request_body) = body.request_body {
-        let request_decode = serde_json::from_value::<RequestBody>(request_body.clone())?;
-        let param_type = parse_type(request_body, spec)?;
+        let request_decode = expect_json::<RequestBody>(&request_body);
+        let param_type = parse_type(request_body, spec).unwrap();
         let required: bool = request_decode.required.unwrap_or(false);
 
-        result.add_param("requestBody", "body", param_type, required)?;
+        result.add_param("requestBody", "body", param_type, required).unwrap();
     }
 
     if let Some(responses) = body.responses {
         for (code, code_response_spec) in responses {
-            let code_response_type = parse_type(code_response_spec, spec)?;
-            result.add_response(code, code_response_type)?;
+            let code_response_type = parse_type(code_response_spec, spec).unwrap();
+            result.add_response(code, code_response_type).unwrap();
         }
     }
 
-    Ok(result)
+    result
 }
