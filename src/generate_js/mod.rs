@@ -128,7 +128,6 @@ import * as t from 'io-ts';
 import {left} isRight {right} from 'fp-ts/lib/Either';
 import {left} fetchGeneralRaw, FetchGeneralRawResponseType {right} from 'src_common/common/fetch';
 import {left} ApiTimeLog {right} from 'src_common/server/webDriver/logFormat';
-import {left} jsonParse {right} from 'src_common/common/jsonParse';
 {import_query_string}
 
 
@@ -164,7 +163,26 @@ export type {name_in_file_camelcase_big}Response200Type = Response200Type;
 export const {name_in_file_camelcase_small}Request = async (api_url: string, api_timeout: number, backendToken: string, params: ParamsType): Promise<{name_in_file_camelcase_big}ResponseType> => {left}
     const response = await {name_in_file}(api_url, api_timeout, backendToken, params);
     const {left} status, body {right} = response;
-    const bodyParsed = jsonParse(body);
+
+    const parse = (body: string): {left}
+        type: 'json',
+        json: unknown,
+    {right} | {left}
+        type: 'text'
+    {right} => {left}
+        try {left}
+            return {left}
+                type: 'json',
+                json: JSON.parse(body)
+            {right};
+        {right} catch (_err) {left}
+            return {left}
+                type: 'json',
+                json: {left}{right},
+            {right};
+        {right}
+    {right};
+    const bodyParsed = parse(body);
 
     if (bodyParsed.type === 'text') {left}
         throw Error(`Http status ${left}status{right} - json was expected`);
