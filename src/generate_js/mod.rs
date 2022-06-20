@@ -137,7 +137,7 @@ import {left} ApiTimeLog {right} from 'src_common/server/webDriver/logFormat';
 {generate_response_io_data}
 
 
-export const {name_in_file} = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_name}: ParamsType): Promise<FetchGeneralRawResponseType> => {left}
+export const {name_in_file} = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_name}: ParamsType, extraHeaders?: Record<string, string>): Promise<FetchGeneralRawResponseType> => {left}
     const url = `${left}api_url{right}{generate_url}`;
     const method = {generate_method};
     const paramsFetch = {left}
@@ -145,6 +145,7 @@ export const {name_in_file} = async (api_url: string, api_timeout: number, backe
         body: {generate_body},
         backendToken,
         timeout: api_timeout,
+        extraHeaders,
     {right};
 
     const apiTime = ApiTimeLog.createWithProcessEnv(method, url);
