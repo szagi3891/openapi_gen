@@ -4,33 +4,67 @@ use crate::utils::ErrorProcess;
 
 use super::get_sorted_map::get_sorted_map;
 
-pub fn deref(value: Value, all: &Value) -> Value {
-    match value.clone() {
-        Value::Object(props) => {
-            if let Some(path) = props.get("$ref") {
-                if props.len() > 1 {
-                    panic!("There may be only $ref as the only attribute of the object");
-                }
+fn deref_from_path(all: &Value, ref_path: &str) -> Value {
+    let target_value = go_to_spec(all, ref_path);
 
-                if let Value::String(path) = path {
-                    let target_value = go_to_spec(all, path.as_str());
+    let target_value = match target_value {
+        Ok(value) => value,
+        Err(err) => {
+            println!("{err:?}");
+            panic!("Problem with finding ref: {ref_path}");
+        }
+    };
 
-                    let target_value = match target_value {
-                        Ok(value) => value,
-                        Err(err) => {
-                            dbg!(value);
-                            println!("{err:?}");
-                            panic!("Problem with finding ref: {path}");
-                        }
-                    };
+    target_value.clone()
+}
 
-                    return deref(target_value.clone(), all);
+fn deref_ref_attribute(all: &Value, value: &Value) -> Option<Value> {
+    if let Value::Object(props) = value {
+        if let Some(Value::String(path)) = props.get("$ref") {
+            let target_value = deref_from_path(all, path.as_str());
+            return Some(deref(target_value, all));
+        }
+    }
 
+    None
+}
+
+fn deref_ref_in_discriminator(all: &Value, value: &Value) -> Option<Value> {
+    if let Value::Object(props) = value {
+        if let Some(Value::Object(props_mapping)) = props.get("mapping") {
+            let mut result_mapping = Map::new();
+
+            for (key, ref_path) in props_mapping.into_iter() {
+                let ref_path = if let Value::String(inner) = ref_path {
+                    inner.clone()
                 } else {
-                    panic!("The attribute pointed to by $ref can only be a string");
-                }
+                    panic!("Expected string");
+                };
+                
+                let value_deref = deref_from_path(all, ref_path.as_str());
+                result_mapping.insert(key.clone(), value_deref);
             }
 
+            let mut new_props = serde_json::Map::new();
+            new_props.insert(String::from("mapping"), Value::Object(result_mapping));
+            return Some(Value::Object(new_props));
+        }
+    }
+
+    None
+}
+
+pub fn deref(value: Value, all: &Value) -> Value {
+    if let Some(new_value) = deref_ref_attribute(all, &value) {
+        return new_value;
+    }
+
+    if let Some(new_value) = deref_ref_in_discriminator(all, &value) {
+        return new_value;
+    }
+
+    match value.clone() {
+        Value::Object(props) => {
             let mut new_map = Map::new();
 
             for (key, value) in get_sorted_map(props.into_iter()) {
