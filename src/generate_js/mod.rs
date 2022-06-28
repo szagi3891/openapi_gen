@@ -1,10 +1,12 @@
-use std::collections::VecDeque;
+use std::collections::{VecDeque};
 
 use crate::generate_js::fix_to_camel_case::fix_to_camel_case;
-use crate::open_api_spec::{OpenApiMethod, ParamIn, SpecHandlerType};
+use crate::open_api_spec::{OpenApiMethod, ParamIn, SpecHandlerType, ParametersType};
 use crate::utils::ErrorProcess;
 use crate::utils::OrderHashMap;
 use crate::open_api_type::OpenApiType;
+
+use self::generate_params_type::generate_type_ts;
 
 mod generate_ident;
 mod generate_params_type;
@@ -105,6 +107,47 @@ fn generate_generic_response(responses: &OrderHashMap<u16, OpenApiType>) -> (Str
     )
 }
 
+fn generate_headers_type(parameters: &Vec<ParametersType>) -> String {
+    let left = '{';
+    let right = '}';
+
+    let mut headers = Vec::new();
+
+    for param in parameters {
+        if param.where_in == ParamIn::Header {
+            let name = &param.name;
+            let param_type = generate_type_ts(4, &param.api_type);
+            if name.contains("-") {
+                headers.push(format!("    '{name}': {param_type},"));
+            } else {
+                headers.push(format!("    {name}: {param_type},"));
+            }
+        }
+    }
+
+    if headers.len() > 0 {
+        let headers_join = headers.join("\n");
+        return format!("type ExtraHeadersType = {left}\n{headers_join}\n{right};\n");
+    }
+
+    String::from("type ExtraHeadersType = Record<string, string>")
+}
+
+fn generate_headers_param(parameters: &Vec<ParametersType>) -> String {
+
+    let mut counter = 0;
+
+    for param in parameters {
+        if param.where_in == ParamIn::Header {
+            counter += 1;
+        }
+    }
+    if counter > 0 {
+        return String::from("extraHeaders: ExtraHeadersType");
+    }
+
+    String::from("extraHeaders?: ExtraHeadersType")
+}
 
 pub fn generate_js(name_in_file: String, url: String, method: OpenApiMethod, handler: &SpecHandlerType) -> Result<String, ErrorProcess> {
     let left = '{';
@@ -117,6 +160,8 @@ pub fn generate_js(name_in_file: String, url: String, method: OpenApiMethod, han
     let generate_method = get_method(&method);
     let generate_body = get_body(handler);
     let generate_params_name = get_params_name(handler);
+    let extra_headers_type = generate_headers_type(&handler.parameters);
+    let extra_headers = generate_headers_param(&handler.parameters);
 
     let name_in_file_camelcase_big = to_big_camel_case(name_in_file.as_str());
     let name_in_file_camelcase_small = word_first_letter_to_lowercase(name_in_file_camelcase_big.as_str());
@@ -137,7 +182,13 @@ import {left} ApiTimeLog {right} from 'src_common/server/webDriver/logFormat';
 {generate_response_io_data}
 
 
-export const {name_in_file} = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_name}: ParamsType, extraHeaders?: Record<string, string>): Promise<FetchGeneralRawResponseType> => {left}
+{extra_headers_type}
+
+
+/**
+ * @deprecated - Please use this method "{name_in_file_camelcase_small}Request"
+ */
+export const {name_in_file} = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_name}: ParamsType, {extra_headers}): Promise<FetchGeneralRawResponseType> => {left}
     const url = `${left}api_url{right}{generate_url}`;
     const method = {generate_method};
     const paramsFetch = {left}
@@ -161,8 +212,8 @@ export type {name_in_file_camelcase_big}ResponseType = {generic_response_types};
 
 export type {name_in_file_camelcase_big}Response200Type = Response200Type;
 
-export const {name_in_file_camelcase_small}Request = async (api_url: string, api_timeout: number, backendToken: string, params: ParamsType): Promise<{name_in_file_camelcase_big}ResponseType> => {left}
-    const response = await {name_in_file}(api_url, api_timeout, backendToken, params);
+export const {name_in_file_camelcase_small}Request = async (api_url: string, api_timeout: number, backendToken: string, params: ParamsType, {extra_headers}): Promise<{name_in_file_camelcase_big}ResponseType> => {left}
+    const response = await {name_in_file}(api_url, api_timeout, backendToken, params, extraHeaders);
     const {left} status, body {right} = response;
 
     const parse = (body: string): {left}

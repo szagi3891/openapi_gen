@@ -68,24 +68,24 @@ pub fn generate_response_io(spec: &SpecHandlerType, url: &String, method: &OpenA
     let right = '}';
     let mut out = Vec::<String>::new();
 
+    out.push(format!("const createGuard = <A>(code: number, decoder: t.Type<A, A, unknown>): ((data: unknown) => A) => {left}"));
+    out.push(format!("    return (data: unknown): A => {left}"));
+    out.push(format!("        const decodeResult = decoder.decode(data);"));
+    out.push(format!("        if (isRight(decodeResult)) {left}"));
+    out.push(format!("            return decodeResult.right;"));
+    out.push(format!("        {right}"));
+    out.push(format!("        throw Error(`Response decoding error {url} -> {method} -> ${left}code{right}`);"));
+    out.push(format!("    {right};"));
+    out.push(format!("{right};"));
+    out.push("".into());
+
     for (code, response) in spec.responses.get_sorted() {
         let type_io = generate_type_io(0, response);
         let type_ts = generate_type_ts(0, response);
 
         out.push(format!("const Response{code}IO = {type_io};"));
-        out.push("".into());
         out.push(format!("export type Response{code}Type = {type_ts};"));
-        out.push("".into());
-        out.push(format!("export const decodeResponse{code} = (data: unknown): Response{code}Type => {left}"));
-        out.push(format!("    const decodeResult = Response{code}IO.decode(data);"));
-        out.push(format!("    if (isRight(decodeResult)) {left}"));
-        out.push(format!("        return decodeResult.right;"));
-        out.push(format!("    {right}"));
-        out.push(format!("    throw Error('Response decoding error {url} -> {method} -> {code}');"));
-        out.push(format!("{right};"));
-        out.push("".into());
-        out.push("".into());
-        out.push("".into());
+        out.push(format!("export const decodeResponse{code} = createGuard({code}, Response{code}IO);"));
         out.push("".into());
     }
 

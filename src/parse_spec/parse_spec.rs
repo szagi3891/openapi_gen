@@ -4,7 +4,7 @@ use serde_json::Value;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
-use crate::utils::{ErrorProcess, expect_json};
+use crate::utils::{expect_json};
 use crate::open_api_spec::{SpecHandlerType, OpenApiMethod, SpecOpenApi};
 
 
@@ -13,18 +13,24 @@ struct Spec {
     paths: HashMap<String, HashMap<String, Option<Value>>>,
 }
 
+fn parse_file(data: String) -> Value {
+    if let Ok(data) = serde_json::from_str::<Value>(&data) {
+        return data;
+    }
+
+    if let Ok(data) = serde_yaml::from_str::<Value>(&data) {
+        return data;
+    }
+
+    println!("\n\n");
+    println!("Data: {data}");
+    println!("\n\n");
+    
+    panic!("Problem with parsing the specification");
+}
 
 pub fn parse_spec(data: String) -> SpecOpenApi {
-    let spec_raw = match serde_json::from_str::<serde_json::Value>(&data) {
-        Ok(data) => Ok(data),
-        Err(err) => {
-            println!("\n\n");
-            println!("Data: {data}");
-            println!("\n\n");
-
-            Err(ErrorProcess::message(format!("Problem with decoding {err}")))
-        }
-    }.unwrap();
+    let spec_raw = parse_file(data);
 
     let spec_raw = filter_deref(spec_raw);
     let spec_raw = filter_null(spec_raw);
