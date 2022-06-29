@@ -32,6 +32,8 @@ fn deref_ref_attribute(all: &Value, value: &Value) -> Option<Value> {
 fn deref_ref_in_discriminator(all: &Value, value: &Value) -> Option<Value> {
     if let Value::Object(props) = value {
         if let Some(Value::Object(props_mapping)) = props.get("mapping") {
+            let property_name = props.get("propertyName");
+
             let mut result_mapping = Map::new();
 
             for (key, ref_path) in props_mapping.into_iter() {
@@ -46,6 +48,14 @@ fn deref_ref_in_discriminator(all: &Value, value: &Value) -> Option<Value> {
             }
 
             let mut new_props = serde_json::Map::new();
+
+            if let Some(Value::String(property_name)) = property_name {
+                new_props.insert(String::from("propertyName"), Value::String(property_name.clone()));
+            } else {
+                let dump = serde_json::to_string(&value).unwrap();
+                panic!("Missing property_name in {dump}");
+            }
+
             new_props.insert(String::from("mapping"), Value::Object(result_mapping));
             return Some(Value::Object(new_props));
         }
