@@ -50,7 +50,11 @@ pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
                 let ident_str = generate_ident(next_ident);
                 let value_std = generate_type_ts(next_ident, value);
                 let key = generate_object_prop_name(key);
-                out.push(format!("{ident_str}{key}: {value_std},"));
+                if value.is_required() {
+                    out.push(format!("{ident_str}{key}: {value_std},"));
+                } else {
+                    out.push(format!("{ident_str}{key}?: {value_std},"));
+                }
             }
 
             let end_iden = generate_ident(ident);

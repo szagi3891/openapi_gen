@@ -63,4 +63,18 @@ impl OpenApiType {
             }
         }
     }
+
+    pub fn is_required(&self) -> bool {
+        match self {
+            Self::LiteralString { required, .. } => *required,
+            Self::String { required, .. } => *required,
+            Self::Number { required, .. } => *required,
+            Self::Boolean { required, .. } => *required,
+            Self::Array { required, .. } => *required,
+            Self::Object { required, .. } => *required,
+            Self::Record { required, .. } => *required,
+            Self::Union { required, .. } => *required,
+            Self::Unknown => true
+        }
+    }
 }
