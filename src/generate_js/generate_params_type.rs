@@ -80,7 +80,7 @@ pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
     }
 }
 
-pub fn generate_params_type(spec: &SpecHandlerType) -> String {
+pub fn generate_params_type(spec: &SpecHandlerType) -> (String, String) {
     let left = '{';
     let right = '}';
 
@@ -93,16 +93,21 @@ pub fn generate_params_type(spec: &SpecHandlerType) -> String {
         format!("{out1}{out2}: {out3},")
     };
 
+    let mut params_counter = 0;
+
     for param in spec.parameters.iter() {
         match param.where_in {
             ParamIn::Body => {
                 out.push(generate_str(param));
+                params_counter += 1;
             },
             ParamIn::Path => {
                 out.push(generate_str(param));
+                params_counter += 1;
             },
             ParamIn::Query => {
                 out.push(generate_str(param));
+                params_counter += 1;
             },
             ParamIn::Header => {},
         };
@@ -110,5 +115,13 @@ pub fn generate_params_type(spec: &SpecHandlerType) -> String {
 
     out.push(format!("{right}"));
 
-    return out.join("\n".into());
+    let params_def = out.join("\n".into());
+
+    let params_name = if params_counter > 0 {
+        "params: ParamsType"
+    } else {
+        "_params: ParamsType"
+    }.to_string();
+
+    (params_name, params_def)
 }
