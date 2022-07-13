@@ -80,7 +80,7 @@ pub fn generate_type_ts(ident: u32, type_param: &OpenApiType) -> String {
     }
 }
 
-pub fn generate_params_type(spec: &SpecHandlerType) -> (String, String) {
+pub fn generate_params_type(spec: &SpecHandlerType) -> (String, String, String) {
     let left = '{';
     let right = '}';
 
@@ -117,11 +117,14 @@ pub fn generate_params_type(spec: &SpecHandlerType) -> (String, String) {
 
     let params_def = out.join("\n".into());
 
-    let params_name = if params_counter > 0 {
-        "params: ParamsType"
+    let (params_name, params_function_def) = if params_counter > 0 {
+        ("params", "params: ParamsType")
     } else {
-        "_params: ParamsType"
-    }.to_string();
+        ("_params", "_params: ParamsType")
+    };
 
-    (params_name, params_def)
+    let params_name = params_name.to_string();
+    let params_function_def = params_function_def.to_string();
+
+    (params_name, params_function_def, params_def)
 }

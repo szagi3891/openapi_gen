@@ -154,7 +154,8 @@ pub fn generate_js(name_in_file: String, url: String, method: OpenApiMethod, han
     let right = '}';
 
     let import_query_string = add_import_query_string(handler);
-    let (generate_params_name, generate_params_type) = generate_params_type::generate_params_type(handler);
+    //(params_name, params_function_def, params_def
+    let (generate_params_name, generate_params_function, generate_params_def) = generate_params_type::generate_params_type(handler);
     let generate_response_io_data = generate_response_io::generate_response_io(handler, &url, &method);
     let generate_url = generate_url(url, handler);
     let generate_method = get_method(&method);
@@ -175,7 +176,7 @@ import {left} ApiTimeLog {right} from 'src_common/server/webDriver/logFormat';
 {import_query_string}
 
 
-{generate_params_type}
+{generate_params_def}
 
 
 {generate_response_io_data}
@@ -187,7 +188,7 @@ import {left} ApiTimeLog {right} from 'src_common/server/webDriver/logFormat';
 /**
  * @deprecated - Please use this method "{name_in_file_camelcase_small}Request"
  */
-export const {name_in_file} = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_name}, {extra_headers}): Promise<FetchGeneralRawResponseType> => {left}
+export const {name_in_file} = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_function}, {extra_headers}): Promise<FetchGeneralRawResponseType> => {left}
     const url = `${left}api_url{right}{generate_url}`;
     const method = {generate_method};
     const paramsFetch = {left}
@@ -211,8 +212,8 @@ export type {name_in_file_camelcase_big}ResponseType = {generic_response_types};
 
 export type {name_in_file_camelcase_big}Response200Type = Response200Type;
 
-export const {name_in_file_camelcase_small}Request = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_name}, {extra_headers}): Promise<{name_in_file_camelcase_big}ResponseType> => {left}
-    const response = await {name_in_file}(api_url, api_timeout, backendToken, params, extraHeaders);
+export const {name_in_file_camelcase_small}Request = async (api_url: string, api_timeout: number, backendToken: string, {generate_params_function}, {extra_headers}): Promise<{name_in_file_camelcase_big}ResponseType> => {left}
+    const response = await {name_in_file}(api_url, api_timeout, backendToken, {generate_params_name}, extraHeaders);
     const {left} status, body {right} = response;
 
     const parse = (body: string): {left}
