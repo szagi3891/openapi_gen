@@ -11,6 +11,23 @@ fn add_require(require: bool, type_param: impl Into<String>) -> String {
     }
 }
 
+fn generate_object_prop_name(key: &String) -> String {
+    let first = key.chars().next();
+
+    match first {
+        Some(first) => {
+            if first.is_alphabetic() {
+                key.to_string()
+            } else {
+                format!("'{key}'")
+            }
+        },
+        None => {
+            panic!("the property name of the object must be a non-empty string");
+        }
+    }
+}
+
 fn generate_type_io(ident: u32, type_param: &OpenApiType) -> String {
     let left = '{';
     let right = '}';
@@ -35,6 +52,7 @@ fn generate_type_io(ident: u32, type_param: &OpenApiType) -> String {
             for (key, value) in props.get_sorted() {
                 let ident_str = generate_ident(next_ident);
                 let value_std = generate_type_io(next_ident, value);
+                let key = generate_object_prop_name(key);
                 out.push(format!("{ident_str}{key}: {value_std},"));
             }
 
